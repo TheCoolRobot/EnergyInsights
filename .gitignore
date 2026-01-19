@@ -1,0 +1,23 @@
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/.DS_Store
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.DS_Store
+frontend/yarn-error.log
+
+# General
+.DS_Store
+*.log
+.env
+.vscode/
+.idea/
+
+# Vercel
+.vercel

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(yarn install)",
+      "Bash(pip freeze:*)",
+      "Bash(pgrep:*)",
+      "Bash(mongod:*)",
+      "Bash(brew services start:*)",
+      "Bash(uvicorn:*)",
+      "Bash(yarn start)",
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(./run.sh)"
+    ]
+  }
+}

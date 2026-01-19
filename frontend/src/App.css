@@ -1,0 +1,137 @@
+.App {
+  min-height: 100vh;
+  background-color: #09090B;
+}
+
+/* Map container */
+.map-container {
+  height: 100vh;
+  width: 100%;
+  position: relative;
+}
+
+.map-container .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  background: #09090B;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+/* Main content area */
+.main-content {
+  margin-left: 280px;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Overlay panels */
+.overlay-panel {
+  position: absolute;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Stats cards */
+.stat-card {
+  background: rgba(24, 24, 27, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  background: rgba(39, 39, 42, 0.8);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Energy type badges */
+.energy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.energy-badge.solar {
+  background: rgba(252, 211, 77, 0.15);
+  color: #FCD34D;
+  border: 1px solid rgba(252, 211, 77, 0.3);
+}
+
+.energy-badge.wind {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.energy-badge.nuclear {
+  background: rgba(163, 230, 53, 0.15);
+  color: #A3E635;
+  border: 1px solid rgba(163, 230, 53, 0.3);
+}
+
+.energy-badge.hydro {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+/* Progress bars */
+.score-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+  .main-content {
+    margin-left: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+  .main-content {
+    margin-left: 0;
+    height: calc(100vh - 200px);
+  }
+}
