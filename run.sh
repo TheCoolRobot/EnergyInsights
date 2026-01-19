@@ -11,28 +11,58 @@ echo -e "${BLUE}Starting EnergyInsights...${NC}"
 # Function to cleanup background processes on exit
 cleanup() {
     echo -e "\n${RED}Shutting down services...${NC}"
-    kill $MONGO_PID $BACKEND_PID $FRONTEND_PID 2>/dev/null
+    if [ ! -z "$BACKEND_PID" ]; then kill $BACKEND_PID 2>/dev/null; fi
+    if [ ! -z "$FRONTEND_PID" ]; then kill $FRONTEND_PID 2>/dev/null; fi
     exit 0
 }
 
 # Set up trap to catch SIGINT (Ctrl+C) and SIGTERM
 trap cleanup SIGINT SIGTERM
 
-# Start MongoDB
-echo -e "${GREEN}Starting MongoDB...${NC}"
-mongod --dbpath ./data/db --fork --logpath ./data/mongodb.log 2>/dev/null || {
-    echo -e "${RED}Failed to start MongoDB. Trying without fork...${NC}"
-    mongod --dbpath ./data/db &
-    MONGO_PID=$!
-}
+# --- Backend Setup ---
+echo -e "${BLUE}Setting up Backend...${NC}"
+cd backend || exit
 
-# Wait a moment for MongoDB to start
-sleep 2
+# Create venv if missing
+if [ ! -d "venv" ]; then
+    echo -e "${GREEN}Creating Python virtual environment...${NC}"
+    python3 -m venv venv
+fi
+
+# Activate venv
+source venv/bin/activate
+
+# Install dependencies
+echo -e "${GREEN}Installing backend dependencies...${NC}"
+pip install -q -r requirements.txt
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to install backend dependencies.${NC}"
+    exit 1
+fi
+cd ..
+
+# --- Frontend Setup ---
+echo -e "${BLUE}Setting up Frontend...${NC}"
+cd frontend || exit
+
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+    echo -e "${GREEN}Installing frontend dependencies...${NC}"
+    yarn install
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to install frontend dependencies.${NC}"
+        exit 1
+    fi
+fi
+cd ..
+
+# --- Start Services ---
 
 # Start backend
 echo -e "${GREEN}Starting backend server...${NC}"
 cd backend
-source venv/bin/activate 2>/dev/null || echo "Note: Could not activate virtual environment"
+source venv/bin/activate
 uvicorn server:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 cd ..
@@ -43,12 +73,11 @@ sleep 2
 # Start frontend
 echo -e "${GREEN}Starting frontend server...${NC}"
 cd frontend
-npm start &
+yarn start &
 FRONTEND_PID=$!
 cd ..
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}✓ MongoDB running${NC}"
 echo -e "${GREEN}✓ Backend running on http://localhost:8000${NC}"
 echo -e "${GREEN}✓ Frontend running on http://localhost:3000${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
