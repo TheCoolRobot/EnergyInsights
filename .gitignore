@@ -18,6 +18,7 @@ frontend/yarn-error.log
 .env
 .vscode/
 .idea/
+data/
 
 # Vercel
 .vercel
