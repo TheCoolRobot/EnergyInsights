@@ -5,15 +5,15 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 from openai import OpenAI
-import asyncio
+from mangum import Mangum
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+# Load environment variables
+load_dotenv()
 
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
@@ -40,22 +40,13 @@ logger = logging.getLogger(__name__)
 class PowerPlant(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    type: str  # solar, wind, nuclear, hydro
+    type: str
     lat: float
     lng: float
     capacity_mw: float
-    status: str  # operational, planned, under_construction
+    status: str
     state: str
     year_built: Optional[int] = None
-
-class EnergyResource(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: str  # solar_irradiance, wind_speed, uranium_reserve, hydro_potential
-    lat: float
-    lng: float
-    value: float
-    unit: str
-    state: str
 
 class StateScore(BaseModel):
     state_code: str
@@ -97,9 +88,9 @@ class AISuggestion(BaseModel):
     energy_type: str
     recommended_capacity_mw: float
     estimated_cost_millions: float
-    score: int  # 1-100
-    energy_demand: Dict[str, Any]  # current demand, projected growth, peak hours
-    financial_analysis: Dict[str, Any]  # revenue projections, payback period, ROI
+    score: int
+    energy_demand: Dict[str, Any]
+    financial_analysis: Dict[str, Any]
     specifications: Dict[str, Any]
     reasoning: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -274,45 +265,40 @@ async def get_power_plants(
     state: Optional[str] = None,
     status: Optional[str] = None
 ):
-    """Get all power plants with optional filters"""
     plants = [PowerPlant(**plant) for plant in POWER_PLANTS_DATA]
-    
+
     if type:
         plants = [p for p in plants if p.type == type]
     if state:
         plants = [p for p in plants if p.state == state]
     if status:
         plants = [p for p in plants if p.status == status]
-    
+
     return plants
 
 @api_router.get("/state-scores", response_model=List[StateScore])
 async def get_state_scores():
-    """Get optimization scores for all states"""
     return [StateScore(**score) for score in STATE_SCORES_DATA]
 
 @api_router.get("/distribution-hubs", response_model=List[DistributionHub])
 async def get_distribution_hubs():
-    """Get all electricity distribution hubs"""
     return [DistributionHub(**hub) for hub in DISTRIBUTION_HUBS_DATA]
 
 @api_router.get("/rankings/{energy_type}", response_model=List[LocationRanking])
 async def get_rankings(energy_type: str):
-    """Get location rankings for a specific energy type (solar, wind, nuclear, hydro)"""
     if energy_type not in LOCATION_RANKINGS:
-        raise HTTPException(status_code=400, detail=f"Invalid energy type. Must be one of: solar, wind, nuclear, hydro")
-    
+        raise HTTPException(status_code=400, detail=f"Invalid energy type")
+
     rankings = []
     for r in LOCATION_RANKINGS[energy_type]:
         rankings.append(LocationRanking(energy_type=energy_type, **r))
-    
+
     return rankings
 
 @api_router.get("/statistics")
 async def get_statistics():
-    """Get overall statistics for the dashboard"""
     plants = [PowerPlant(**plant) for plant in POWER_PLANTS_DATA]
-    
+
     stats = {
         "total_plants": len(plants),
         "total_capacity_mw": sum(p.capacity_mw for p in plants),
@@ -320,77 +306,58 @@ async def get_statistics():
         "by_status": {},
         "states_covered": len(set(p.state for p in plants))
     }
-    
+
     for energy_type in ["solar", "wind", "nuclear", "hydro"]:
         type_plants = [p for p in plants if p.type == energy_type]
         stats["by_type"][energy_type] = {
             "count": len(type_plants),
             "capacity_mw": sum(p.capacity_mw for p in type_plants)
         }
-    
+
     for status in ["operational", "planned", "under_construction"]:
         status_plants = [p for p in plants if p.status == status]
         stats["by_status"][status] = len(status_plants)
-    
+
     return stats
 
 @api_router.post("/ai/suggest", response_model=AISuggestion)
 async def ai_suggest_location(request: AISuggestionRequest):
-    """Use AI to suggest optimal power plant locations"""
     try:
         system_message = """You are an expert renewable energy infrastructure analyst.
 Analyze location data and provide specific recommendations for new power plant installations.
 Always respond in valid JSON format with the following structure:
 {
-    "location_name": "Descriptive name for the location",
-    "lat": float (latitude between 25-49 for continental US),
-    "lng": float (longitude between -125 to -70 for continental US),
+    "location_name": "Descriptive name",
+    "lat": float,
+    "lng": float,
     "state": "two-letter state code",
     "energy_type": "solar|wind|nuclear|hydro",
     "recommended_capacity_mw": float,
     "estimated_cost_millions": float,
     "score": int (1-100),
     "energy_demand": {
-        "current_demand_mw": float (current regional energy demand in MW),
-        "projected_growth_percent": float (annual growth rate),
-        "peak_demand_hours": string (time period of peak demand),
-        "demand_drivers": string (industries/factors driving demand)
+        "current_demand_mw": float,
+        "projected_growth_percent": float,
+        "peak_demand_hours": string,
+        "demand_drivers": string
     },
     "financial_analysis": {
-        "annual_revenue_millions": float (estimated annual revenue in millions USD),
-        "annual_operating_cost_millions": float (yearly operating expenses),
-        "payback_period_years": float (years until investment breaks even),
-        "roi_20_year_percent": float (20-year return on investment percentage),
-        "net_present_value_millions": float (NPV over 20 years)
+        "annual_revenue_millions": float,
+        "annual_operating_cost_millions": float,
+        "payback_period_years": float,
+        "roi_20_year_percent": float,
+        "net_present_value_millions": float
     },
-    "specifications": {
-        "key": "value pairs relevant to the energy type"
-    },
-    "reasoning": "Detailed explanation of why this location is optimal, including energy demand and financial viability"
+    "specifications": {},
+    "reasoning": "Detailed explanation"
 }"""
 
-        prompt = f"""Suggest an optimal location for a new power plant with these preferences:
-- State preference: {request.state or 'Any US state'}
-- Energy type preference: {request.energy_type or 'Best suited type for region'}
+        prompt = f"""Suggest an optimal location for a new power plant:
+- State: {request.state or 'Any US state'}
+- Energy type: {request.energy_type or 'Best suited'}
 - Budget: {request.budget_millions or 'Not specified'} million USD
 
-Consider:
-1. Natural resource availability (solar irradiance, wind patterns, water access, uranium proximity)
-2. Existing grid infrastructure
-3. Land availability and costs
-4. Environmental regulations
-5. Population centers and energy demand (current usage, growth projections, peak hours, demand drivers)
-6. Regional industries and economic factors affecting energy consumption
-7. Financial viability: Calculate annual revenue based on electricity rates (~$50-80/MWh), operating costs (10-30% of revenue), payback period, and ROI
-
-Provide a complete financial analysis including:
-- Annual revenue projections based on capacity factor and electricity prices
-- Operating costs
-- Payback period (when cumulative revenue exceeds initial investment)
-- 20-year ROI percentage
-- Net Present Value using 7% discount rate
-
-Return your recommendation as a single JSON object."""
+Provide complete analysis with energy demand and financial details."""
 
         response = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -405,16 +372,15 @@ Return your recommendation as a single JSON object."""
         response_text = response.choices[0].message.content.strip()
 
         import json
-        # Parse the JSON response
         if response_text.startswith("```json"):
             response_text = response_text[7:]
         if response_text.startswith("```"):
             response_text = response_text[3:]
         if response_text.endswith("```"):
             response_text = response_text[:-3]
-        
+
         suggestion_data = json.loads(response_text.strip())
-        
+
         return AISuggestion(
             location_name=suggestion_data.get("location_name", "AI Recommended Site"),
             lat=float(suggestion_data.get("lat", 35.0)),
@@ -424,28 +390,16 @@ Return your recommendation as a single JSON object."""
             recommended_capacity_mw=float(suggestion_data.get("recommended_capacity_mw", 500)),
             estimated_cost_millions=float(suggestion_data.get("estimated_cost_millions", 750)),
             score=int(suggestion_data.get("score", 85)),
-            energy_demand=suggestion_data.get("energy_demand", {
-                "current_demand_mw": 5000,
-                "projected_growth_percent": 3.5,
-                "peak_demand_hours": "2-8 PM",
-                "demand_drivers": "Growing population and commercial activity"
-            }),
-            financial_analysis=suggestion_data.get("financial_analysis", {
-                "annual_revenue_millions": 35.0,
-                "annual_operating_cost_millions": 8.5,
-                "payback_period_years": 12.5,
-                "roi_20_year_percent": 185.0,
-                "net_present_value_millions": 125.0
-            }),
+            energy_demand=suggestion_data.get("energy_demand", {}),
+            financial_analysis=suggestion_data.get("financial_analysis", {}),
             specifications=suggestion_data.get("specifications", {}),
-            reasoning=suggestion_data.get("reasoning", "AI-generated recommendation based on available data")
+            reasoning=suggestion_data.get("reasoning", "AI-generated recommendation")
         )
-        
+
     except Exception as e:
         logger.error(f"AI suggestion error: {str(e)}")
-        # Return a fallback suggestion
         return AISuggestion(
-            location_name="Recommended Solar Installation Site",
+            location_name="Recommended Solar Site",
             lat=33.45,
             lng=-112.07,
             state=request.state or "AZ",
@@ -456,8 +410,8 @@ Return your recommendation as a single JSON object."""
             energy_demand={
                 "current_demand_mw": 8500,
                 "projected_growth_percent": 4.2,
-                "peak_demand_hours": "3-7 PM daily",
-                "demand_drivers": "Data centers, manufacturing, residential cooling"
+                "peak_demand_hours": "3-7 PM",
+                "demand_drivers": "Data centers, manufacturing"
             },
             financial_analysis={
                 "annual_revenue_millions": 42.5,
@@ -468,54 +422,45 @@ Return your recommendation as a single JSON object."""
             },
             specifications={
                 "panel_type": "Bifacial monocrystalline",
-                "tracking": "Single-axis tracking",
-                "land_area_acres": 2500,
-                "annual_generation_gwh": 1200
+                "tracking": "Single-axis",
+                "land_area_acres": 2500
             },
-            reasoning="High solar irradiance region with existing grid infrastructure, favorable state policies, and strong energy demand growth driven by expanding data center operations and residential development"
+            reasoning="High solar irradiance with favorable policies"
         )
 
 @api_router.get("/comparison")
 async def get_comparison_data():
-    """Get comparison data for all energy types"""
     return {
         "solar": {
             "avg_capacity_factor": 25.5,
             "avg_lcoe_usd_mwh": 31.5,
             "total_us_capacity_gw": 143,
-            "growth_rate_percent": 23.4,
-            "jobs_per_gw": 4800,
-            "co2_avoided_tons_per_gwh": 420
+            "growth_rate_percent": 23.4
         },
         "wind": {
             "avg_capacity_factor": 34.8,
             "avg_lcoe_usd_mwh": 26.4,
             "total_us_capacity_gw": 147,
-            "growth_rate_percent": 12.8,
-            "jobs_per_gw": 3200,
-            "co2_avoided_tons_per_gwh": 440
+            "growth_rate_percent": 12.8
         },
         "nuclear": {
             "avg_capacity_factor": 93.4,
             "avg_lcoe_usd_mwh": 77.5,
             "total_us_capacity_gw": 95,
-            "growth_rate_percent": 1.2,
-            "jobs_per_gw": 950,
-            "co2_avoided_tons_per_gwh": 490
+            "growth_rate_percent": 1.2
         },
         "hydro": {
             "avg_capacity_factor": 41.2,
             "avg_lcoe_usd_mwh": 64.3,
             "total_us_capacity_gw": 103,
-            "growth_rate_percent": 0.8,
-            "jobs_per_gw": 1800,
-            "co2_avoided_tons_per_gwh": 460
+            "growth_rate_percent": 0.8
         }
     }
 
-# Include the router in the main app
+# Include the router
 app.include_router(api_router)
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -524,6 +469,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+# Vercel handler
+handler = Mangum(app)
+
+
+
