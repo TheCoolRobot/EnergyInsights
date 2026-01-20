@@ -467,6 +467,11 @@ async def get_comparison_data():
         }
     }
 
+# Health check endpoint (for debugging)
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "Backend is running"}
+
 # Include the router
 app.include_router(api_router)
 
