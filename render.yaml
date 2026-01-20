@@ -21,7 +21,4 @@ services:
     staticPublishPath: frontend/build
     envVars:
       - key: REACT_APP_BACKEND_URL
-        fromService:
-          type: web
-          name: energy-insights-api
-          property: hostport
+        value: "https://energy-insights-api.onrender.com"
