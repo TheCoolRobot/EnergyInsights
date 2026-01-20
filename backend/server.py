@@ -28,10 +28,12 @@ if mongo_url:
 
 # Groq API Configuration
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-groq_client = OpenAI(
-    api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1"
-)
+groq_client = None
+if GROQ_API_KEY:
+    groq_client = OpenAI(
+        api_key=GROQ_API_KEY,
+        base_url="https://api.groq.com/openai/v1"
+    )
 
 # Create the main app
 app = FastAPI(title="EcoVolt Geo API")
@@ -328,6 +330,8 @@ async def get_statistics():
 
 @api_router.post("/ai/suggest", response_model=AISuggestion)
 async def ai_suggest_location(request: AISuggestionRequest):
+    if not groq_client:
+        raise HTTPException(status_code=503, detail="AI service not configured. Please set GROQ_API_KEY environment variable.")
     try:
         system_message = """You are an expert renewable energy infrastructure analyst.
 Analyze location data and provide specific recommendations for new power plant installations.
