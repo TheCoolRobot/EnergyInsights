@@ -1,7 +1,7 @@
 {
   "builds": [
     {
-      "src": "api/*.py",
+      "src": "backend/server.py",
       "use": "@vercel/python"
     },
     {
@@ -10,6 +10,12 @@
       "config": {
         "distDir": "build"
       }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/backend/server.py"
     }
   ]
 }
