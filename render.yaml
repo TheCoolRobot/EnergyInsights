@@ -1,0 +1,27 @@
+services:
+  # Backend API
+  - type: web
+    name: energy-insights-api
+    env: python
+    region: oregon
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+    healthCheckPath: /api/health
+
+  # Frontend (static site)
+  - type: web
+    name: energy-insights-frontend
+    env: static
+    buildCommand: cd frontend && yarn install && yarn build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        fromService:
+          type: web
+          name: energy-insights-api
+          property: hostport
