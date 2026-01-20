@@ -1,7 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -15,10 +14,17 @@ from mangum import Mangum
 # Load environment variables
 load_dotenv()
 
-# MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ.get('DB_NAME', 'energy_insights')]
+# MongoDB connection (optional - only connect if MONGO_URL is provided)
+mongo_url = os.environ.get('MONGO_URL')
+client = None
+db = None
+if mongo_url:
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[os.environ.get('DB_NAME', 'energy_insights')]
+    except Exception as e:
+        logging.warning(f"MongoDB connection failed: {e}. Using in-memory data.")
 
 # Groq API Configuration
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
