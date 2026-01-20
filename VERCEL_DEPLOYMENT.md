@@ -1,232 +1,249 @@
-# Deploy EnergyInsights to Vercel - Complete Guide
+Deploy EnergyInsights to Vercel - Complete Guide
+What Changed for Vercel
+Your app has been restructured for Vercel's serverless platform:
 
-## Prerequisites
-1. Vercel account (free tier works): https://vercel.com/signup
-2. MongoDB Atlas account (free tier): https://www.mongodb.com/cloud/atlas/register
-3. Groq API key (free): https://console.groq.com
+Added mangum - Adapter that makes FastAPI work with Vercel's serverless functions
+Created vercel.json - Configuration file that tells Vercel how to deploy
+Simplified data - Using in-memory data (you can connect MongoDB later)
+Handler export - Added handler = Mangum(app) at the end of server.py
+Prerequisites
+Vercel account: https://vercel.com/signup (free)
+Groq API key: https://console.groq.com (free)
+Git repository: Push your code to GitHub/GitLab/Bitbucket
+Step 1: Prepare Your Repository
+File Structure
+Make sure your repository has this structure:
 
-## Step 1: Set Up MongoDB Atlas (Database)
+your-project/
+├── backend/
+│   ├── server.py          (updated with Mangum handler)
+│   ├── requirements.txt   (updated with mangum)
+│   └── .env              (don't commit this!)
+├── frontend/
+│   ├── package.json
+│   ├── src/
+│   └── public/
+└── vercel.json           (new file)
+Update Files
+Replace backend/server.py with the new Vercel-ready version
+Replace backend/requirements.txt with the updated dependencies
+Create vercel.json in your project root (provided above)
+Push to Git
+bash
+git add .
+git commit -m "Prepare for Vercel deployment"
+git push origin main
+Step 2: Deploy to Vercel
+Option A: Using Vercel Dashboard (Easiest)
+Go to Vercel: https://vercel.com/new
+Import Your Repository
+Click "Import Git Repository"
+Select your GitHub/GitLab/Bitbucket repo
+Click "Import"
+Configure Project
+Framework Preset: Other
+Root Directory: ./ (leave as is)
+Build Command: Leave empty (vercel.json handles this)
+Output Directory: Leave empty
+Add Environment Variables Click "Environment Variables" and add:
+GROQ_API_KEY = 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
+CORS_ORIGINS = *
+Optional (if using MongoDB):
 
-Since Vercel is serverless, you need a cloud database. MongoDB Atlas is free and perfect for this.
+MONGO_URL = mongodb+srv://username:password@cluster.mongodb.net/
+DB_NAME = energy_insights
+Deploy
+Click "Deploy"
+Wait 2-3 minutes
+Your app will be live!
+Option B: Using Vercel CLI
+Install Vercel CLI
+bash
+npm install -g vercel
+Login
+bash
+vercel login
+Deploy
+bash
+vercel
+Answer the prompts:
 
-### Create MongoDB Atlas Cluster:
-1. Go to https://www.mongodb.com/cloud/atlas/register
-2. Sign up for a free account
-3. Create a new cluster (choose Free tier - M0)
-4. Choose a cloud provider and region (any works)
-5. Click "Create Cluster" (takes ~3-5 minutes)
+Set up and deploy? Yes
+Which scope? Select your account
+Link to existing project? No
+Project name? energy-insights (or any name)
+In which directory? ./ (just press Enter)
+Want to modify settings? No
+Set Environment Variables
+bash
+vercel env add GROQ_API_KEY
+# Paste: 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
 
-### Get Connection String:
-1. Click "Connect" on your cluster
-2. Choose "Connect your application"
-3. Copy the connection string, it looks like:
-   ```
-   mongodb+srv://username:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
-   ```
-4. Replace `<password>` with your actual database password
-5. Add a database name at the end: `...mongodb.net/energy_insights?retryWrites=true&w=majority`
+vercel env add CORS_ORIGINS
+# Enter: *
+Deploy to Production
+bash
+vercel --prod
+Step 3: Get Your URLs
+After deployment, Vercel gives you:
 
-### Allow Access:
-1. In Atlas, go to "Network Access" → "Add IP Address"
-2. Click "Allow Access from Anywhere" (0.0.0.0/0)
-3. Click "Confirm"
+Frontend URL: https://your-project.vercel.app
+Backend API: https://your-project.vercel.app/api
+Test Your API
+bash
+# Test the API
+curl https://your-project.vercel.app/api/
 
-## Step 2: Deploy Backend to Vercel
+# Get power plants
+curl https://your-project.vercel.app/api/power-plants
 
-### Option A: Using Vercel CLI (Recommended)
+# Test AI suggestion
+curl -X POST https://your-project.vercel.app/api/ai/suggest \
+-H "Content-Type: application/json" \
+-d '{"state":"CA","energy_type":"solar","budget_millions":500}'
+Step 4: Update Frontend (if needed)
+If your frontend needs to know the backend URL, update the environment variable:
 
-1. **Install Vercel CLI:**
-   ```bash
-   npm install -g vercel
-   ```
+bash
+# In frontend/.env
+REACT_APP_BACKEND_URL=https://your-project.vercel.app/api
+Then commit and push:
 
-2. **Login to Vercel:**
-   ```bash
-   vercel login
-   ```
+bash
+git add frontend/.env
+git commit -m "Update backend URL"
+git push
+Vercel will automatically redeploy!
 
-3. **Deploy Backend:**
-   ```bash
-   cd backend
-   vercel
-   ```
-   - Answer prompts:
-     - Set up and deploy? **Yes**
-     - Which scope? Choose your account
-     - Link to existing project? **No**
-     - What's your project's name? `energy-insights-backend` (or any name)
-     - In which directory is your code? `./`
-     - Want to modify settings? **No**
+Step 5: Update CORS (Optional)
+For better security, update CORS to only allow your frontend:
 
-4. **Set Environment Variables:**
-   ```bash
-   vercel env add MONGO_URL
-   # Paste your MongoDB Atlas connection string
+Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+Edit CORS_ORIGINS
+Change from * to https://your-project.vercel.app
+Redeploy
+Troubleshooting
+Backend API not working
+Check function logs:
 
-   vercel env add DB_NAME
-   # Enter: energy_insights
+bash
+vercel logs <your-url>
+Common issues:
 
-   vercel env add CORS_ORIGINS
-   # Enter: * (will update later with frontend URL)
+Missing environment variables
+Groq API key incorrect
+Python dependency issues
+Fix: Go to Vercel Dashboard → Project → Settings → Environment Variables
 
-   vercel env add GROQ_API_KEY
-   # Paste: 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
-   ```
+Frontend can't reach backend
+Check CORS:
 
-5. **Deploy to Production:**
-   ```bash
-   vercel --prod
-   ```
+Make sure CORS_ORIGINS includes your frontend URL or *
+Check API URL:
 
-6. **Save your backend URL** (looks like: `https://energy-insights-backend.vercel.app`)
+Frontend should call /api/endpoint not http://localhost:8000/api/endpoint
+Build fails
+Check build logs in Vercel Dashboard
 
-### Option B: Using Vercel Dashboard
+Common fixes:
 
-1. Go to https://vercel.com/new
-2. Import your Git repository (push to GitHub first)
-3. Select the `backend` directory as the root
-4. Add environment variables in the dashboard:
-   - `MONGO_URL`: Your MongoDB Atlas connection string
-   - `DB_NAME`: `energy_insights`
-   - `CORS_ORIGINS`: `*` (update later)
-   - `GROQ_API_KEY`: Your Groq API key
-5. Click "Deploy"
-
-## Step 3: Deploy Frontend to Vercel
-
-### Update Frontend Environment:
-
-1. **Edit `frontend/.env`:**
-   ```bash
-   REACT_APP_BACKEND_URL=https://your-backend-url.vercel.app
-   WDS_SOCKET_PORT=443
-   ENABLE_HEALTH_CHECK=false
-   ```
-   Replace `your-backend-url.vercel.app` with your actual backend URL from Step 2.
-
-### Deploy:
-
-1. **Using Vercel CLI:**
-   ```bash
-   cd ../frontend
-   vercel
-   ```
-   - Answer prompts similar to backend
-   - Project name: `energy-insights-frontend` (or any name)
-
-   Then deploy to production:
-   ```bash
-   vercel --prod
-   ```
-
-2. **Using Vercel Dashboard:**
-   - Import the project
-   - Set root directory to `frontend`
-   - Build command: `yarn build`
-   - Output directory: `build`
-   - Click "Deploy"
-
-3. **Save your frontend URL** (looks like: `https://energy-insights-frontend.vercel.app`)
-
-## Step 4: Update CORS Settings
-
-Now that you have your frontend URL, update the backend CORS settings:
-
-1. **Using Vercel CLI:**
-   ```bash
-   cd backend
-   vercel env rm CORS_ORIGINS production
-   vercel env add CORS_ORIGINS production
-   # Enter: https://your-frontend-url.vercel.app
-
-   vercel --prod
-   ```
-
-2. **Using Vercel Dashboard:**
-   - Go to your backend project settings
-   - Navigate to "Environment Variables"
-   - Edit `CORS_ORIGINS` to your frontend URL
-   - Redeploy
-
-## Step 5: Test Your Deployment
-
-1. Open your frontend URL: `https://your-frontend-url.vercel.app`
-2. The map and data should load automatically
-3. Try the AI Analyst feature:
-   - Select a state
-   - Choose an energy type
-   - Enter a budget
-   - Click "Get AI Recommendation"
-4. You should see a detailed analysis with energy demand data
-
-## Troubleshooting
-
-### Backend Issues:
-- **"Application error"**: Check Vercel function logs
-- **Database connection failed**: Verify MongoDB Atlas connection string and IP whitelist
-- **Groq API errors**: Verify API key is correct
-
-### Frontend Issues:
-- **Can't connect to backend**: Check `REACT_APP_BACKEND_URL` in frontend environment
-- **CORS errors**: Make sure backend `CORS_ORIGINS` includes your frontend URL
-- **Build fails**: Run `yarn build` locally first to check for errors
-
-### Common Fixes:
-```bash
-# View backend logs
-vercel logs <deployment-url>
-
-# Redeploy backend
+bash
+# Update requirements.txt
 cd backend
-vercel --prod
+pip freeze > requirements.txt
 
-# Redeploy frontend
+# Update package.json
 cd frontend
+npm install
+AI suggestions fail
+Check Groq API key:
+
+Verify key is correct: https://console.groq.com
+Check Vercel environment variables
+Redeploy after updating
+Advanced: Add MongoDB (Optional)
+If you want to use MongoDB instead of in-memory data:
+
+Create MongoDB Atlas cluster: https://www.mongodb.com/cloud/atlas/register
+Get connection string
+Add to Vercel:
+bash
+vercel env add MONGO_URL
+# Paste: mongodb+srv://user:pass@cluster.mongodb.net/energy_insights
+
+vercel env add DB_NAME
+# Enter: energy_insights
+Redeploy:
+bash
 vercel --prod
-```
+Automatic Deployments
+Vercel automatically deploys when you push to Git:
 
-## Cost Breakdown (All Free!)
+bash
+# Make changes
+git add .
+git commit -m "Update feature"
+git push
 
-- **Vercel**: Free tier includes:
-  - 100 GB bandwidth/month
-  - Unlimited deployments
-  - Serverless functions
+# Vercel automatically deploys!
+Custom Domain (Optional)
+Go to Vercel Dashboard → Your Project → Settings → Domains
+Add your domain (e.g., energyinsights.com)
+Follow DNS instructions
+Done! Your app is on your custom domain
+Monitoring
+View logs:
 
-- **MongoDB Atlas**: Free tier includes:
-  - 512 MB storage
-  - Shared RAM
-  - Perfect for development/small apps
+bash
+vercel logs --follow
+View deployments:
 
-- **Groq API**: Free tier includes:
-  - 30 requests per minute
-  - 6,000 requests per day
-  - Llama 3.3 70B model
-
-## Quick Commands Reference
-
-```bash
-# Deploy backend to production
-cd backend
-vercel --prod
-
-# Deploy frontend to production
-cd frontend
-vercel --prod
-
-# View deployments
+bash
 vercel ls
+Analytics:
+
+Go to Vercel Dashboard → Your Project → Analytics
+See traffic, performance, errors
+Cost Breakdown (FREE!)
+Vercel Free Tier includes:
+
+✅ Unlimited deployments
+✅ 100GB bandwidth/month
+✅ Serverless functions
+✅ Automatic HTTPS
+✅ Global CDN
+✅ Automatic CI/CD
+Groq Free Tier:
+
+✅ 30 requests/minute
+✅ 6,000 requests/day
+✅ Llama 3.3 70B model
+Quick Commands
+bash
+# Deploy to preview
+vercel
+
+# Deploy to production
+vercel --prod
 
 # View logs
 vercel logs
 
-# View environment variables
+# List deployments
+vercel ls
+
+# Environment variables
 vercel env ls
-```
+vercel env add VARIABLE_NAME
+vercel env rm VARIABLE_NAME
+Need Help?
+Vercel Docs: https://vercel.com/docs
+Vercel Support: https://vercel.com/support
+Groq Docs: https://console.groq.com/docs
+Success! 🎉
+Your app should now be live at:
 
-## Need Help?
+Frontend: https://your-project.vercel.app
+API: https://your-project.vercel.app/api
+Try the AI suggestion feature to test the full stack!
 
-- Vercel Docs: https://vercel.com/docs
-- MongoDB Atlas Docs: https://www.mongodb.com/docs/atlas/
-- Groq API Docs: https://console.groq.com/docs
-
-Your app is now fully deployed and accessible from anywhere! 🚀
