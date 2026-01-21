@@ -127,10 +127,6 @@ EnergyInsights/
 └── README.md
 ```
 
-## Deployment
-
-See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) for deployment instructions.
-
 ## License
 
 MIT
